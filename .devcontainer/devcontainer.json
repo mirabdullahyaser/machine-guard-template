@@ -1,6 +1,8 @@
 {
   "name": "Machine Guard (MLOps from Zero to Live)",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "hostRequirements": {
     "cpus": 2
   },
