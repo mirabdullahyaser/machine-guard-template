@@ -1,0 +1,9 @@
+# Serving image only: what the API needs at run time, nothing else (no MLflow, Jupyter or matplotlib).
+# Same versions as requirements.txt, so the model behaves exactly as it did in training.
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+scikit-learn==1.5.2
+pandas==2.2.3
+numpy==1.26.4
+joblib==1.4.2

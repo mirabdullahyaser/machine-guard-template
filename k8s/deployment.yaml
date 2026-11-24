@@ -1,0 +1,63 @@
+# A Deployment keeps N copies (pods) of the API running, replaces any that die,
+# and swaps image versions one pod at a time (a rolling update).
+#
+# Before applying:
+#   1. Replace YOUR-GITHUB-USER below with your GitHub username in lowercase.
+#   2. Create the API key secret (never put the key in this file):
+#        kubectl create secret generic machine-guard-api-key --from-literal=API_KEY="$API_KEY"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: machine-guard
+  labels:
+    app: machine-guard
+spec:
+  replicas: 1                      # the lab scales this to 3
+  selector:
+    matchLabels:
+      app: machine-guard           # "the pods I manage are the ones with this label"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0            # never go below the wanted number of pods during an update
+      maxSurge: 1                  # start one new pod at a time
+  template:                        # the recipe for each pod
+    metadata:
+      labels:
+        app: machine-guard
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/YOUR-GITHUB-USER/machine-guard:v1
+          imagePullPolicy: IfNotPresent   # use a local copy if there is one (kind load docker-image)
+          ports:
+            - containerPort: 8000
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:            # read from the Secret, not written here
+                  name: machine-guard-api-key
+                  key: API_KEY
+          readinessProbe:                # "ready for traffic?" The Service only sends requests to ready pods.
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          lifecycle:
+            preStop:                     # when a pod is deleted, wait 5 s before stopping the API, so the
+              exec:                      # Service has time to stop sending it requests (no failed calls)
+                command: ["sleep", "5"]
+          livenessProbe:                 # "still alive?" If not, Kubernetes restarts the container.
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:                    # what the scheduler reserves for each pod
+              cpu: 100m
+              memory: 256Mi
+            limits:                      # the most a pod may use; above the memory limit it is killed
+              cpu: 500m
+              memory: 512Mi

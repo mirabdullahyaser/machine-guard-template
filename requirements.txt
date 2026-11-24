@@ -1,0 +1,39 @@
+# Machine Guard: pinned environment for the whole course (Days 1 to 4).
+# Every package is pinned so results are the same for everyone. Tested on Python 3.9;
+# confirmed to resolve on Python 3.11 (the Codespace image). Confirm with a real Codespace build
+# before Day 1, then save `pip freeze` as a record of the exact environment.
+# The serving image installs only requirements-serve.txt; the Streamlit page has its own
+# streamlit_app/requirements.txt.
+
+# Day 1: data, ML, notebooks, tracking
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+matplotlib==3.9.2
+jupyterlab==4.2.5
+ipykernel==6.29.5
+mlflow==2.17.2
+
+# Day 2: data versioning, fairness, explainability
+dvc==3.67.1                # older 3.x crashes on `dvc add` with pathspec 1.x
+fairlearn==0.12.0
+shap==0.46.0
+numba==0.60.0              # SHAP dependency, pinned so 3.9 and 3.11 match
+
+# Day 3: serving (same versions as requirements-serve.txt)
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+joblib==1.4.2
+
+# Day 4: validation, tests, drift, pipelines
+pandera==0.20.4
+evidently==0.4.40          # pin exactly: 0.5+ moved Report and DataDriftPreset
+prefect==3.1.0
+pytest==8.3.3
+httpx==0.27.2              # used by FastAPI's TestClient
+
+# Same tested versions on Python 3.9 and 3.11 (pip picks newer ones on 3.11 otherwise)
+plotly==5.24.1             # Evidently 0.4.x builds its report figures with plotly 5
+sqlalchemy==2.0.58
+scipy==1.13.1

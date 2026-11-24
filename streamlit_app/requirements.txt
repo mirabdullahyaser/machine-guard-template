@@ -1,0 +1,4 @@
+# Streamlit Community Cloud installs only this file for the web page (it looks next to app.py first).
+# The page does not load the model; it calls the API. So no scikit-learn here.
+streamlit==1.39.0
+requests==2.32.3

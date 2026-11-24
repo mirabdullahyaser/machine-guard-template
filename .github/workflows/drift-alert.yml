@@ -1,0 +1,69 @@
+# Machine Guard drift alert: compare the latest incoming batch with the training data.
+# If drift is found, open a GitHub issue (once: no duplicates while one is still open).
+name: Drift alert
+
+# The weekly schedule is switched OFF until Day 4. Lab 2, step 4: on the two lines below, delete "# "
+# (the hash and the space after it) to switch it on. Deleting only the "#" breaks the indentation.
+on:
+  # schedule:
+  #   - cron: "0 3 * * 1"      # Mondays 03:00 UTC = 08:00 PKT. Schedules run on the default branch only.
+  workflow_dispatch:          # the "Run workflow" button, for the lab and for testing
+    inputs:
+      batch:
+        description: "Batch to check"
+        default: data/incoming/next_quarter.csv
+
+permissions:
+  contents: read
+  issues: write               # lets GITHUB_TOKEN open the alert issue
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    env:
+      BATCH: ${{ inputs.batch || 'data/incoming/next_quarter.csv' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}     # used by the gh command below
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned requirements
+        run: pip install -r requirements.txt
+
+      - name: Get the data
+        run: |
+          python scripts/download_data.py
+          # Course stand-in for "the latest batch from the plant": rebuild it if it isn't committed.
+          if [ ! -f "$BATCH" ]; then python scripts/simulate_next_quarter.py; fi
+
+      - name: Check drift
+        id: drift
+        run: |
+          python -m machine_guard.drift --current "$BATCH"
+          echo "detected=$(python -c "import json; print(str(json.load(open('reports/drift_summary.json'))['drift_detected']).lower())")" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the HTML report (download it from the run page)
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: reports/drift_report.html
+
+      - name: Open a GitHub issue
+        if: steps.drift.outputs.detected == 'true'
+        run: |
+          open_issues=$(gh issue list --label drift --state open --json number --jq 'length')
+          if [ "$open_issues" != "0" ]; then
+            echo "A drift issue is already open: not opening another one."
+            exit 0
+          fi
+          gh label create drift --color B42318 --description "Data drift alert" --force
+          {
+            cat reports/drift_summary.md
+            echo
+            echo "Report: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (artifact: drift-report)"
+          } > issue.md
+          gh issue create --title "Drift alert: $BATCH ($(date -u +%Y-%m-%d))" --label drift --body-file issue.md

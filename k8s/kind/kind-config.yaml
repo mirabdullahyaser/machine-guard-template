@@ -1,0 +1,15 @@
+# kind cluster for the Day 3 Kubernetes lab. Kept in its own folder so that
+# "kubectl apply -f k8s/" does not try to apply it (it is not a Kubernetes object).
+#
+#   kind create cluster --name machine-guard --config k8s/kind/kind-config.yaml --wait 120s
+#
+# The port mapping makes the Service's NodePort 30080 reachable at localhost:8080 in the codespace.
+# Unlike "kubectl port-forward", it keeps working when a pod is deleted.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP

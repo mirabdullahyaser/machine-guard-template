@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# MLflow local tracking (Day 2 decides what to keep)
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Secrets: never commit these
+.env
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# Day 2: batch 2 is rebuilt by scripts/make_batch2.py, never committed
+data/incoming/batch2.csv
+
+# Day 3: run-time output and local secrets (models/ stays committed)
+logs/
+.streamlit/secrets.toml
+
+# Day 4: generated, rebuilt on demand
+data/incoming/
+reports/drift_report.html
+reports/drift_summary.*
+reports/holdout/
+reports/live/
+.pytest_cache/

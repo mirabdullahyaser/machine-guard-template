@@ -1,0 +1,38 @@
+# Files Docker should NOT send into the image build.
+# Smaller build context = faster builds, and no secrets or big data baked into the image.
+
+# Secrets: never in an image
+.env
+*.pem
+*.key
+.streamlit/secrets.toml
+
+# Git, editor and Python caches
+.git
+.github
+.vscode
+.devcontainer
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Training-time things the API does not need
+data/
+notebooks/
+results/
+reports/
+mlruns/
+mlartifacts/
+mlflow.db
+.dvc/
+streamlit_app/
+k8s/
+tests/
+docs/
+flows/
+
+# Run-time output from local runs
+logs/
+
+# Keep: app/, machine_guard/, models/, requirements-serve.txt

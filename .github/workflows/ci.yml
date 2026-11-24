@@ -1,0 +1,84 @@
+# Machine Guard CI: on every push and pull request, check the data, the code and the model.
+# On a push to main, if everything passes, build the Docker image and push it to GHCR.
+name: CI
+
+# CI is switched OFF until Day 4. Lab 1, step 6: on the three lines below, delete "# " (the hash
+# and the space after it) to switch it on. Deleting only the "#" breaks the indentation.
+on:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  workflow_dispatch:        # the "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Validate, test and gate
+    runs-on: ubuntu-latest
+    env:
+      API_KEY: ci-test-key                     # a throwaway key for the test API, not a secret
+      PREDICTION_LOG: logs/ci_predictions.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"               # same as the codespace
+          cache: pip
+
+      - name: Install pinned requirements
+        run: pip install -r requirements.txt
+
+      - name: Get the data
+        run: python scripts/download_data.py   # rebuilds data/raw/ai4i2020.csv from the committed original
+
+      - name: Validate the training data
+        run: python -m machine_guard.validate data/raw/ai4i2020.csv --require-target
+
+      - name: Unit tests
+        run: pytest
+
+      # TODO (Lab 1, step 6): add a step named "Quality gate (recall on failures >= 0.75)"
+      # that runs the gate on models/model.joblib. Copy the shape of the "Unit tests" step.
+
+      - name: Start the API in the background
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health && exit 0
+            sleep 1
+          done
+          echo "API did not start"; cat uvicorn.log; exit 1
+
+      - name: Integration tests against the running API
+        run: pytest -m integration
+        env:
+          API_URL: http://127.0.0.1:8000
+
+  image:
+    name: Build and push the image
+    needs: test                                # only runs if every check above passed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write                          # lets GITHUB_TOKEN push to ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name (GHCR needs a lowercase owner)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/machine-guard" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
